@@ -11,12 +11,13 @@ import {
   EventInterface,
   FADE,
   Options,
-  RequestInterval,
+  // RequestInterval,
   Throttle,
-  RequestIntervalInterface,
+  // RequestIntervalInterface,
   SLIDE,
   Splide,
 } from '@splidejs/splide';
+import { CustomRequestInterval, RequestIntervalInterface } from './CustomRequestInterval';
 import { assign, clamp, isObject, isUndefined, setAttribute, toggleClass } from '@splidejs/splide/src/js/utils';
 import { DEFAULTS } from '../../constants/defaults';
 import { AutoScrollOptions } from '../../types/options';
@@ -121,7 +122,7 @@ export function AutoScroll( Splide: Splide, Components: Components, options: Opt
   function mount(): void {
     if ( ! Splide.is( FADE ) ) {
       if ( ! interval && options.autoScroll !== false ) {
-        interval = RequestInterval( 0, move );
+        interval = CustomRequestInterval( 0, move );
         listen();
         autoStart();
       }
