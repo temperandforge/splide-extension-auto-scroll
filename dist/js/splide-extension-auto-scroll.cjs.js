@@ -2,7 +2,7 @@
  * @splidejs/splide-extension-auto-scroll
  * Version  : 0.5.3
  * License  : MIT
- * Copyright: 2022 Naotoshi Fujita
+ * Copyright: 2025 Naotoshi Fujita
  */
 'use strict';
 
@@ -20,7 +20,7 @@ function apply$1(func) {
   return func.bind.apply(func, [null].concat(slice$1(arguments, 1)));
 }
 
-function raf(func) {
+function raf$1(func) {
   return requestAnimationFrame(func);
 }
 
@@ -198,7 +198,7 @@ function RequestInterval(interval, onInterval, onUpdate, limit) {
         }
       }
 
-      raf(update);
+      raf$1(update);
     }
   }
 
@@ -206,7 +206,7 @@ function RequestInterval(interval, onInterval, onUpdate, limit) {
     !resume && cancel();
     startTime = now() - (resume ? rate * interval : 0);
     paused = false;
-    raf(update);
+    raf$1(update);
   }
 
   function pause() {
@@ -266,6 +266,89 @@ var CLASS_ACTIVE = "is-active";
 
 var SLIDE = "slide";
 var FADE = "fade";
+
+function raf(func) {
+  return requestAnimationFrame(func);
+}
+function CustomRequestInterval(interval, onInterval, onUpdate, limit) {
+  const { now } = Date;
+  let startTime;
+  let rate = 0;
+  let id;
+  let paused = true;
+  let count = 0;
+  let targetFPS = 60;
+  let targetFrameTime = 1e3 / targetFPS;
+  let accumulatedTime = 0;
+  let lastTime = 0;
+  let running = false;
+  function bufferStart(updateFn) {
+    if (running) return;
+    running = true;
+    lastTime = performance.now();
+    const animate = (currentTime) => {
+      if (!running) return;
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+      accumulatedTime += deltaTime;
+      while (accumulatedTime >= targetFrameTime) {
+        updateFn(targetFrameTime);
+        accumulatedTime -= targetFrameTime;
+      }
+      id = raf(animate);
+    };
+    id = raf(animate);
+  }
+  function update() {
+    if (!paused) {
+      rate = interval ? Math.min((now() - startTime) / interval, 1) : 1;
+      onUpdate && onUpdate(rate);
+      if (rate >= 1) {
+        onInterval();
+        startTime = now();
+        if (limit && ++count >= limit) {
+          return pause();
+        }
+      }
+    }
+  }
+  function start(resume) {
+    resume || cancel();
+    startTime = now() - (resume ? rate * interval : 0);
+    paused = false;
+    bufferStart(update);
+  }
+  function pause() {
+    paused = true;
+  }
+  function rewind() {
+    startTime = now();
+    rate = 0;
+    if (onUpdate) {
+      onUpdate(rate);
+    }
+  }
+  function cancel() {
+    id && cancelAnimationFrame(id);
+    rate = 0;
+    id = 0;
+    paused = true;
+  }
+  function set(time) {
+    interval = time;
+  }
+  function isPaused() {
+    return paused;
+  }
+  return {
+    start,
+    rewind,
+    pause,
+    cancel,
+    set,
+    isPaused
+  };
+}
 
 function slice(arrayLike, start, end) {
   return Array.prototype.slice.call(arrayLike, start, end);
@@ -397,7 +480,7 @@ function AutoScroll(Splide2, Components2, options) {
   function mount() {
     if (!Splide2.is(FADE)) {
       if (!interval && options.autoScroll !== false) {
-        interval = RequestInterval(0, move);
+        interval = CustomRequestInterval(0, move);
         listen();
         autoStart();
       }
